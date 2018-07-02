@@ -9,17 +9,6 @@ import (
 
 const subsidy = 10
 
-type TxInput struct {
-	Txid      []byte
-	Vout      int
-	ScriptSig string
-}
-
-type TxOutput struct {
-	Value        int
-	ScriptPubKey string
-}
-
 type Transaction struct {
 	ID   []byte
 	Vin  []TxInput
@@ -27,7 +16,7 @@ type Transaction struct {
 }
 
 func (tx *Transaction) IsCoinbase() bool {
-	return len(tx.Vin) == 1 && len(tx.Vin[0].Txid) == 0 && tx.Vout[0] == -1
+	return len(tx.Vin) == 1 && len(tx.Vin[0].Txid) == 0 && tx.Vin[0].Vout == -1
 }
 
 func (tx *Transaction) SetID() {
@@ -43,10 +32,21 @@ func (tx *Transaction) SetID() {
 	tx.ID = hash[:]
 }
 
-func (input *TxInput) CanUnlockOutputWith(unlockData string) bool {
-	return input.ScriptSig == unlockData
-}
+func NewCoinbaseTx(to, data string) *Transaction {
+	// coinbase的输入不会有任何引入输出，因此vout设置为0，id也标记为一个空字节
+	txInput := TxInput{
+		Txid:      []byte{},
+		Vout:      -1,
+		ScriptSig: data,
+	}
 
-func (output *TxOutput) CanBeUnlockedWith(unlockData string) bool {
-	return output.ScriptPubKey == unlockData
+	// coinbase的输出是挖矿获得的奖励，而输出的解锁地址正是传入的这个to的地址，也就是矿工地址
+	txOutput := TxOutput{
+		Value:        subsidy,
+		ScriptPubKey: to,
+	}
+
+	tx := &Transaction{Vin: []TxInput{txInput}, Vout: []TxOutput{txOutput}}
+	tx.SetID()
+	return tx
 }
