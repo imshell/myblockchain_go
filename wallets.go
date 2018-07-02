@@ -11,22 +11,26 @@ import (
 )
 
 type Wallets struct {
-	Wallets map[string]*Wallet
+	WalletMap map[string]*Wallet
 }
 
 func NewWallets() (*Wallets, error) {
-	wallets := &Wallets{}
-	wallets.Wallets = make(map[string]*Wallet)
-
+	wallets := Wallets{}
+	wallets.WalletMap = make(map[string]*Wallet)
 	err := wallets.LoadFromFile()
-	return wallets, err
+	return &wallets, err
+}
+
+func (w *Wallets) GetWallet(address string) *Wallet {
+	return w.WalletMap[address]
 }
 
 // 创建钱包
 func (w *Wallets) CreateWallet() string {
 	wallet := NewWallet()
 	address := fmt.Sprintf("%s", wallet.GetAddress())
-	w.Wallets[address] = wallet
+
+	w.WalletMap[address] = wallet
 	return address
 }
 
@@ -41,12 +45,16 @@ func (w *Wallets) LoadFromFile() error {
 		return err
 	}
 
+	if len(content) == 0 {
+		return nil
+	}
+
 	var wallets Wallets
 	gob.Register(elliptic.P256())
 	decoder := gob.NewDecoder(bytes.NewReader(content))
 	decoder.Decode(&wallets)
 
-	w.Wallets = wallets.Wallets
+	w.WalletMap = wallets.WalletMap
 	return nil
 }
 

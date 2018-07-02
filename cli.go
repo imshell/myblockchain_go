@@ -53,8 +53,17 @@ func (cli *CLI) GetBalance(address string) {
 	bc := NewBlockchain(address)
 	defer bc.CloseDb()
 
+	wallets, err := NewWallets()
+
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	wallet := wallets.GetWallet(address)
+	pubKeyHash := HashPubkey(wallet.PublicKey)
+
 	var balance int
-	utxo := bc.FindUTXO(address)
+	utxo := bc.FindUTXO(pubKeyHash)
 
 	for _, out := range utxo {
 		balance += out.Value
@@ -76,10 +85,7 @@ func (cli *CLI) Send(from string, to string, amount int) {
 }
 
 func (cli *CLI) CreateWallet() {
-	ws, err := NewWallets()
-	if err != nil {
-		log.Panicln(err)
-	}
+	ws, _ := NewWallets()
 	address := ws.CreateWallet()
 	ws.SaveToFile()
 
@@ -93,6 +99,7 @@ func (cli *CLI) Run() {
 	createBlockchainCmd := flag.NewFlagSet("createblockchain", flag.ExitOnError)
 	getBalanceCmd := flag.NewFlagSet("getbalance", flag.ExitOnError)
 	sendCmd := flag.NewFlagSet("send", flag.ExitOnError)
+	createWatlletCmd := flag.NewFlagSet("createwallet", flag.ExitOnError)
 
 	createBlockchainData := createBlockchainCmd.String("address", "", "init address")
 	getBalanceData := getBalanceCmd.String("address", "", "查看余额的address")
@@ -119,6 +126,11 @@ func (cli *CLI) Run() {
 		}
 	case "send":
 		err := sendCmd.Parse(os.Args[2:])
+		if err != nil {
+			log.Panicln(err)
+		}
+	case "createwallet":
+		err := createWatlletCmd.Parse(os.Args[2:])
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -154,4 +166,9 @@ func (cli *CLI) Run() {
 			cli.Send(*from, *to, *amount)
 		}
 	}
+
+	if createWatlletCmd.Parsed() {
+		cli.CreateWallet()
+	}
+
 }
