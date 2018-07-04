@@ -46,6 +46,10 @@ func (cli *CLI) showBlockchain() {
 func (cli *CLI) CreateBlockchain(address string) {
 	bc := Createblockchain(address)
 	defer bc.CloseDb()
+
+	utxo := UTXOSet{bc}
+	utxo.Reindex()
+
 	fmt.Println("Done")
 }
 
@@ -63,7 +67,8 @@ func (cli *CLI) GetBalance(address string) {
 	pubKeyHash := HashPubkey(wallet.PublicKey)
 
 	var balance int
-	utxo := bc.FindUTXO(pubKeyHash)
+	utxoSet := UTXOSet{bc}
+	utxo := utxoSet.FindUTXO(pubKeyHash)
 
 	for _, out := range utxo {
 		balance += out.Value
@@ -77,9 +82,12 @@ func (cli *CLI) Send(from string, to string, amount int) {
 	defer bc.CloseDb()
 
 	tx := bc.NewUTXOTransaction(from, to, amount)
+	cbTx := NewCoinbaseTx(from, "")
 
 	// 挖矿，把此笔交易附加到区块中
-	bc.MineBlock([]*Transaction{tx})
+	block := bc.MineBlock([]*Transaction{cbTx, tx})
+	utxo := UTXOSet{bc}
+	utxo.Update(block)
 
 	fmt.Println("Done!")
 }

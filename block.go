@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/gob"
 	"log"
 	"time"
@@ -14,13 +13,15 @@ type Block struct {
 	Hash         []byte
 	PrevHash     []byte
 	Nonce        int
+	Height       int
 }
 
-func NewBlock(txs []*Transaction, prevHash []byte) *Block {
+func NewBlock(txs []*Transaction, prevHash []byte, height int) *Block {
 	block := &Block{
 		Timestamp:    time.Now().Unix(),
 		Transactions: txs,
 		PrevHash:     prevHash,
+		Height:       height,
 	}
 
 	pow := NewProofOfWork(block)
@@ -33,7 +34,7 @@ func NewBlock(txs []*Transaction, prevHash []byte) *Block {
 }
 
 func NewGenesisBlock(tx *Transaction) *Block {
-	return NewBlock([]*Transaction{tx}, []byte{})
+	return NewBlock([]*Transaction{tx}, []byte{}, 0)
 }
 
 func (b *Block) Serialized() []byte {
@@ -49,16 +50,14 @@ func (b *Block) Serialized() []byte {
 }
 
 func (b *Block) HashTransaction() []byte {
-	var txHashes [][]byte
-	var txHash [32]byte
+	var transactions [][]byte
 
-	// 把每一笔交易的hash过的id进行叠加
-	for _, t := range b.Transactions {
-		txHashes = append(txHashes, t.ID)
+	for _, tx := range b.Transactions {
+		transactions = append(transactions, tx.Serialize())
 	}
 
-	txHash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
-	return txHash[:]
+	mTree := NewMerkleTree(transactions)
+	return mTree.RootNode.Data
 }
 
 func Deserialize(data []byte) *Block {

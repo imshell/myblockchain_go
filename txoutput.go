@@ -1,6 +1,10 @@
 package main
 
-import "bytes"
+import (
+	"bytes"
+	"encoding/gob"
+	"log"
+)
 
 type TxOutput struct {
 	Value      int
@@ -21,4 +25,34 @@ func (output *TxOutput) Lock(address []byte) {
 
 func (output *TxOutput) IsLockedWithKey(pubKeyHash []byte) bool {
 	return bytes.Compare(pubKeyHash, output.PubKeyHash) == 0
+}
+
+type TxOutputs struct {
+	Outputs []TxOutput
+}
+
+func (outputs *TxOutputs) Serialize() []byte {
+	var buff bytes.Buffer
+
+	encoder := gob.NewEncoder(&buff)
+	err := encoder.Encode(outputs)
+
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	return buff.Bytes()
+}
+
+func DeserializeOutputs(opByte []byte) TxOutputs {
+	outputs := TxOutputs{}
+
+	decoder := gob.NewDecoder(bytes.NewReader(opByte))
+	err := decoder.Decode(&outputs)
+
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	return outputs
 }
